@@ -1,188 +1,134 @@
-# 🚗 Vehicle Parking App
-MAD II Project
+cat > run_dev.sh <<'BASH'
+#!/usr/bin/env bash
+set -euo pipefail
 
-A full-stack Vehicle Parking Management System built using Flask and Vue.js.
-The application supports role-based access, background task processing,
-caching, and email notifications.
+# ---------- Config ----------
+BACKEND_DIR="backend"
+FRONTEND_DIR="frontend"
+VENV_DIR="$BACKEND_DIR/venv"
+LOG_DIR=".logs"
 
---------------------------------------------------
-TECH STACK
---------------------------------------------------
+# Celery pool:
+# - "solo" is safest across environments (including Windows dev setups). [web:30]
+# - On Linux/macOS you can switch to: export CELERY_POOL=prefork
+CELERY_POOL="${CELERY_POOL:-solo}"
 
-Backend:
-- Python 3.x
-- Flask
-- Flask-Security
-- Celery
-- Redis
-- SQLite
+# ---------- Helpers ----------
+die() { echo "ERROR: $*" >&2; exit 1; }
+has() { command -v "$1" >/dev/null 2>&1; }
 
-Frontend:
-- Vue.js (Vite)
-- Axios
-- Vue Router
+mkdir -p "$LOG_DIR"
 
-Development Tools:
-- MailHog (email testing)
-- Redis (cache + Celery broker)
+# ---------- Validate folders ----------
+[[ -d "$BACKEND_DIR" ]]  || die "Missing ./backend folder"
+[[ -d "$FRONTEND_DIR" ]] || die "Missing ./frontend folder"
+[[ -f "$BACKEND_DIR/requirements.txt" ]] || die "Missing backend/requirements.txt"
+[[ -f "$BACKEND_DIR/app.py" ]] || die "Missing backend/app.py"
+[[ -f "$FRONTEND_DIR/package.json" ]] || die "Missing frontend/package.json"
 
---------------------------------------------------
-PREREQUISITES
---------------------------------------------------
+# ---------- Check prerequisites ----------
+has python3 || has python || die "Python not found (install Python 3.x)"
+has npm || die "npm not found (install Node.js + npm)"
 
-Before running this project, ensure the following are installed:
+PY_BIN="python3"
+has python3 || PY_BIN="python"
 
-1. Node.js & npm (Frontend)
-2. Python 3.x (Backend)
-3. Redis Server (must be running)
-4. MailHog (for capturing emails during development)
+# ---------- Backend setup ----------
+if [[ ! -d "$VENV_DIR" ]]; then
+  echo "Creating Python venv..."
+  "$PY_BIN" -m venv "$VENV_DIR"
+fi
 
---------------------------------------------------
-PROJECT STRUCTURE
---------------------------------------------------
+PIP_BIN="$VENV_DIR/bin/pip"
+PY_VENV="$VENV_DIR/bin/python"
+CELERY_BIN="$VENV_DIR/bin/celery"
 
-.
-├── backend
-│   ├── app.py
-│   ├── cache.py
-│   ├── tasks.py
-│   ├── requirements.txt
-│   ├── models
-│   │   └── models.py
-│   └── routes
-│       ├── admin.py
-│       ├── auth.py
-│       └── users.py
-│
-├── frontend
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.js
-│   └── src
-│       ├── api.js
-│       ├── App.vue
-│       ├── main.js
-│       ├── router
-│       │   └── index.js
-│       └── views
-│           ├── AdminDashboard.vue
-│           ├── UserDashboard.vue
-│           ├── LoginView.vue
-│           ├── RegisterView.vue
-│           └── ProfileView.vue
-│
-├── openapi.yaml
-└── README.md
+[[ -x "$PIP_BIN" ]] || die "pip not found in venv (venv broken?)"
+[[ -x "$PY_VENV" ]] || die "python not found in venv (venv broken?)"
 
---------------------------------------------------
-INSTALLATION GUIDE
---------------------------------------------------
+echo "Installing backend dependencies..."
+"$PIP_BIN" install -r "$BACKEND_DIR/requirements.txt" >"$LOG_DIR/pip_install.log" 2>&1 || {
+  echo "Backend install failed. Check $LOG_DIR/pip_install.log"
+  exit 1
+}
 
-BACKEND SETUP (Flask)
+# ---------- Frontend setup ----------
+echo "Installing frontend dependencies..."
+( cd "$FRONTEND_DIR" && npm install >"../$LOG_DIR/npm_install.log" 2>&1 ) || {
+  echo "Frontend install failed. Check $LOG_DIR/npm_install.log"
+  exit 1
+}
 
-Open a terminal in the backend folder:
+# ---------- Start services ----------
+PIDS=()
 
-1. Create a virtual environment
-   python -m venv venv
+cleanup() {
+  echo ""
+  echo "Stopping services..."
+  for pid in "${PIDS[@]:-}"; do
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+}
+trap cleanup EXIT INT TERM
 
-2. Activate the virtual environment
+# Redis (default port is 6379) [web:32]
+echo "Starting Redis (if not already running)..."
+if has redis-cli && redis-cli ping >/dev/null 2>&1; then
+  echo "Redis already running."
+else
+  if has redis-server; then
+    redis-server --port 6379 >"$LOG_DIR/redis.log" 2>&1 &
+    PIDS+=("$!")
+    sleep 1
+  else
+    echo "Redis not found. Install Redis or start it manually, then re-run."
+    exit 1
+  fi
+fi
 
-   Windows:
-   venv\Scripts\activate
+# MailHog (HTTP UI default port 8025) [web:21]
+echo "Starting MailHog..."
+if has MailHog; then
+  MailHog >"$LOG_DIR/mailhog.log" 2>&1 &
+  PIDS+=("$!")
+elif has mailhog; then
+  mailhog >"$LOG_DIR/mailhog.log" 2>&1 &
+  PIDS+=("$!")
+else
+  echo "MailHog binary not found in PATH. Install/run MailHog manually, then re-run."
+  exit 1
+fi
 
-   macOS / Linux:
-   source venv/bin/activate
+# Flask API
+echo "Starting Flask API..."
+( cd "$BACKEND_DIR" && "$PY_VENV" app.py >"../$LOG_DIR/flask.log" 2>&1 ) &
+PIDS+=("$!")
 
-3. Install dependencies
-   pip install -r requirements.txt
+# Celery Worker
+echo "Starting Celery Worker (pool=$CELERY_POOL)..."
+( cd "$BACKEND_DIR" && "$CELERY_BIN" -A app.celery worker --pool="$CELERY_POOL" --loglevel=info >"../$LOG_DIR/celery_worker.log" 2>&1 ) &
+PIDS+=("$!")
 
---------------------------------------------------
+# Celery Beat
+echo "Starting Celery Beat..."
+( cd "$BACKEND_DIR" && "$CELERY_BIN" -A app.celery beat --loglevel=info >"../$LOG_DIR/celery_beat.log" 2>&1 ) &
+PIDS+=("$!")
 
-FRONTEND SETUP (Vue.js)
+# Vue Dev Server
+echo "Starting Vue frontend..."
+( cd "$FRONTEND_DIR" && npm run dev >"../$LOG_DIR/frontend.log" 2>&1 ) &
+PIDS+=("$!")
 
-Open a terminal in the frontend folder:
+echo ""
+echo "All services started."
+echo "UI:      http://localhost:5173"
+echo "MailHog:  http://localhost:8025"
+echo "Logs:    $LOG_DIR/"
+echo ""
+echo "Press Ctrl+C to stop everything."
 
-1. Install dependencies
-   npm install
+wait
+BASH
 
---------------------------------------------------
-RUNNING THE APPLICATION (LOCAL)
---------------------------------------------------
-
-You need multiple terminals running simultaneously.
-
---------------------------------------------------
-TERMINAL 1: Redis & MailHog
---------------------------------------------------
-
-- Ensure Redis service is running
-- Start MailHog
-
-MailHog UI:
-http://localhost:8025
-
---------------------------------------------------
-TERMINAL 2: Flask API
---------------------------------------------------
-
-cd backend
-python app.py
-
-Notes:
-- Database is created automatically
-- Default admin user is created
-
-Admin Credentials:
-Email: admin@parking.com
-Password: admin123
-
---------------------------------------------------
-TERMINAL 3: Celery Worker
---------------------------------------------------
-
-cd backend
-celery -A app.celery worker --pool=solo --loglevel=info
-
---------------------------------------------------
-TERMINAL 4: Celery Beat (Scheduler)
---------------------------------------------------
-
-cd backend
-celery -A app.celery beat --loglevel=info
-
---------------------------------------------------
-TERMINAL 5: Frontend
---------------------------------------------------
-
-cd frontend
-npm run dev
-
---------------------------------------------------
-ACCESSING THE APPLICATION
---------------------------------------------------
-
-Frontend UI:
-http://localhost:5173
-
-Admin Login:
-Email: admin@parking.com
-Password: admin123
-
---------------------------------------------------
-REDIS CACHE MANAGEMENT
---------------------------------------------------
-
-To clear Redis cache manually:
-
-redis-cli FLUSHALL
-
---------------------------------------------------
-NOTES
---------------------------------------------------
-
-- MailHog is used only for local development.
-- For production deployment, SMTP services should replace MailHog.
-- Celery Beat may be disabled in free-tier deployments.
-- Redis is required for caching and background task processing.
-
---------------------------------------------------
+chmod +x run_dev.sh
+./run_dev.sh
