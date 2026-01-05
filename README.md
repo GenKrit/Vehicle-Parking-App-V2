@@ -1,70 +1,86 @@
-Vehicle Parking App (MAD II Project)
+# Vehicle Parking App
+### MAD II Project
 
-Prerequisites
+A full-stack **Vehicle Parking Management System** developed as part of the MAD II curriculum.  
+The application uses **Flask** for the backend and **Vue.js (Vite)** for the frontend, with support for authentication, background tasks, caching, and email notifications.
 
-Before running this project, please ensure you have the following installed:
+---
 
-1.Node.js & npm (For Frontend)
-2.Python 3.x (For Backend)
-3.Redis Server (Required for Celery/Caching) - Must be running in background.
-4.MailHog (For capturing emails) - Must be running.
+## 📌 Features
 
-Installation Guide
+- Role-based authentication (Admin / User)
+- Vehicle parking and slot management
+- Admin and user dashboards
+- Background task processing using Celery
+- Redis-based caching
+- Email notifications (MailHog for development)
 
-1.Backend Setup (Flask)
+---
 
-Open a terminal in the backend folder:
-# 1. Create a virtual environment
-# python -m venv venv
+## 🧱 Tech Stack
 
-# 2. Activate it
-# Windows:
-# venv\Scripts\activate
-# Mac/Linux:
-# source venv/bin/activate
+### Backend
+- Python 3.x
+- Flask
+- Flask-Security
+- Celery
+- Redis
+- SQLite
 
-# 3. Install dependencies
-# pip install -r requirements.txt
+### Frontend
+- Vue.js (Vite)
+- Axios
+- Vue Router
 
-2. Frontend Setup (Vue.js)
+### Development & Utilities
+- MailHog (email testing)
+- Redis (cache & Celery broker)
 
-Open a terminal in the frontend folder:
-# Install dependencies
-# npm install
+---
 
+## 📦 Prerequisites
 
-How to Run the Application
+Ensure the following are installed before running the project:
 
-You need 4 separate terminals running simultaneously.
+- **Node.js & npm** (Frontend)
+- **Python 3.x** (Backend)
+- **Redis Server** (must be running)
+- **MailHog** (for capturing emails during development)
 
-Terminal 1: MailHog & Redis
-Ensure Redis Service is running.
-Run the MailHog executable.
-View emails at: http://localhost:8025
+---
 
-Terminal 2: Flask API
-# cd backend
-# Ensure venv is active
-# python app.py
-This will automatically create the database and Admin user (admin@parking.com / admin123).
+## 📁 Project Structure
 
-Terminal 3: Celery Worker
-# cd backend
-# Ensure venv is active
-# celery -A app.celery worker --pool=solo --loglevel=info
-
-Terminal 4: Celery Beat (Scheduler)
-# cd backend
-# Ensure venv is active
-# celery -A app.celery beat --loglevel=info
-
-Terminal 5: Frontend
-
-# cd frontend
-# npm run dev
-Access the App
-UI: http://localhost:5173Admin 
-Login: admin@parking.com / admin123
-
-# redis cache clear
-# redis-cli FLUSHALL
+```text
+.
+├── backend
+│   ├── app.py
+│   ├── cache.py
+│   ├── tasks.py
+│   ├── requirements.txt
+│   ├── models
+│   │   └── models.py
+│   └── routes
+│       ├── admin.py
+│       ├── auth.py
+│       └── users.py
+│
+├── frontend
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── src
+│       ├── api.js
+│       ├── App.vue
+│       ├── main.js
+│       ├── router
+│       │   └── index.js
+│       └── views
+│           ├── AdminDashboard.vue
+│           ├── UserDashboard.vue
+│           ├── LoginView.vue
+│           ├── RegisterView.vue
+│           └── ProfileView.vue
+│
+├── openapi.yaml
+└── README.md
