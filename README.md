@@ -1,70 +1,204 @@
-Vehicle Parking App (MAD II Project)
+🚗 Vehicle Parking App
+MAD II Project
 
-Prerequisites
+A full-stack Vehicle Parking Management System built using Flask (backend) and Vue.js (frontend).
+The application supports role-based access, background task processing, caching, and email notifications.
 
-Before running this project, please ensure you have the following installed:
+✨ Features
 
-1.Node.js & npm (For Frontend)
-2.Python 3.x (For Backend)
-3.Redis Server (Required for Celery/Caching) - Must be running in background.
-4.MailHog (For capturing emails) - Must be running.
+Role-based authentication (Admin / User)
 
-Installation Guide
+Vehicle parking management
 
-1.Backend Setup (Flask)
+Admin and user dashboards
+
+Background tasks using Celery
+
+Redis-based caching
+
+Email notifications (MailHog for development)
+
+🧱 Tech Stack
+Backend
+
+Python 3.x
+
+Flask
+
+Flask-Security
+
+Celery
+
+Redis
+
+SQLite
+
+Frontend
+
+Vue.js (Vite)
+
+Axios
+
+Vue Router
+
+Development Tools
+
+MailHog (email testing)
+
+Redis (cache & Celery broker)
+
+📦 Prerequisites
+
+Make sure the following are installed before running the project:
+
+Node.js & npm (Frontend)
+
+Python 3.x (Backend)
+
+Redis Server (must be running)
+
+MailHog (for capturing emails during development)
+
+📁 Project Structure
+.
+├── backend
+│   ├── app.py
+│   ├── cache.py
+│   ├── tasks.py
+│   ├── requirements.txt
+│   ├── models
+│   │   └── models.py
+│   └── routes
+│       ├── admin.py
+│       ├── auth.py
+│       └── users.py
+│
+├── frontend
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── src
+│       ├── api.js
+│       ├── App.vue
+│       ├── main.js
+│       ├── router
+│       │   └── index.js
+│       └── views
+│           ├── AdminDashboard.vue
+│           ├── UserDashboard.vue
+│           ├── LoginView.vue
+│           ├── RegisterView.vue
+│           └── ProfileView.vue
+│
+├── openapi.yaml
+└── README.md
+
+⚙️ Installation
+Backend Setup (Flask)
 
 Open a terminal in the backend folder:
-# 1. Create a virtual environment
-# python -m venv venv
 
-# 2. Activate it
-# Windows:
-# venv\Scripts\activate
-# Mac/Linux:
-# source venv/bin/activate
+python -m venv venv
 
-# 3. Install dependencies
-# pip install -r requirements.txt
 
-2. Frontend Setup (Vue.js)
+Activate the virtual environment:
+
+Windows
+
+venv\Scripts\activate
+
+
+macOS / Linux
+
+source venv/bin/activate
+
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+Frontend Setup (Vue.js)
 
 Open a terminal in the frontend folder:
-# Install dependencies
-# npm install
 
+npm install
 
-How to Run the Application
+▶️ Running the Application (Local)
 
-You need 4 separate terminals running simultaneously.
+You will need multiple terminals running simultaneously.
 
-Terminal 1: MailHog & Redis
-Ensure Redis Service is running.
-Run the MailHog executable.
-View emails at: http://localhost:8025
+Terminal 1: Redis & MailHog
+
+Ensure Redis service is running
+
+Start MailHog
+
+MailHog Web UI:
+👉 http://localhost:8025
 
 Terminal 2: Flask API
-# cd backend
-# Ensure venv is active
-# python app.py
-This will automatically create the database and Admin user (admin@parking.com / admin123).
+cd backend
+python app.py
+
+
+Notes:
+
+Database is created automatically
+
+Default admin user is created on first run
+
+Admin Credentials
+
+Email: admin@parking.com
+
+Password: admin123
 
 Terminal 3: Celery Worker
-# cd backend
-# Ensure venv is active
-# celery -A app.celery worker --pool=solo --loglevel=info
+cd backend
+celery -A app.celery worker --pool=solo --loglevel=info
 
 Terminal 4: Celery Beat (Scheduler)
-# cd backend
-# Ensure venv is active
-# celery -A app.celery beat --loglevel=info
+cd backend
+celery -A app.celery beat --loglevel=info
 
 Terminal 5: Frontend
+cd frontend
+npm run dev
 
-# cd frontend
-# npm run dev
-Access the App
-UI: http://localhost:5173Admin 
-Login: admin@parking.com / admin123
+🌐 Access the Application
 
-# redis cache clear
-# redis-cli FLUSHALL
+Frontend UI: http://localhost:5173
+
+Admin Login:
+
+Email: admin@parking.com
+
+Password: admin123
+
+🧹 Redis Cache Management
+
+To clear Redis cache manually:
+
+redis-cli FLUSHALL
+
+📝 Notes
+
+MailHog is used only for local development
+
+For production, MailHog should be replaced with an SMTP service
+
+Celery Beat may be disabled in free-tier deployments
+
+Redis is required for caching and background task execution
+
+📌 Deployment
+
+This project can be deployed using:
+
+Frontend: Vercel
+
+Backend: Render
+
+Cache / Broker: Redis (Render)
+
+Free-tier deployments may experience cold starts.
