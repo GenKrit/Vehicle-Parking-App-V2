@@ -1,0 +1,23 @@
+/* Dark theme base */
+body {
+  background-color: #212529;
+  color: #f8f9fa;
+}
+
+/* Card + form styling */
+.card {
+  background-color: #343a40;
+  color: #f8f9fa;
+  border: none;
+}
+
+.form-control {
+  background-color: #495057;
+  color: #f8f9fa;
+  border-color: #6c757d;
+}
+
+/* Utility for centering login/register panels */
+.min-vh-75 {
+  min-height: 100vh;
+}

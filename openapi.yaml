@@ -1,0 +1,494 @@
+openapi.yaml
+
+openapi: 3.0.0
+info:
+  title: Vehicle Parking App API
+  description: API for managing parking lots, reservations, analytics, and user profiles.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+    ParkingLot:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        pin_code:
+          type: string
+        capacity:
+          type: integer
+        price_per_hour:
+          type: number
+          format: float
+        active_spots:
+          type: integer
+
+paths:
+  # --- AUTHENTICATION ---
+  /login:
+    post:
+      summary: User Login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login Successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  email:
+                    type: string
+                  role:
+                    type: string
+        '400':
+          description: Missing email or password
+        '401':
+          description: Invalid credentials
+
+  /register:
+    post:
+      summary: Register a new User
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, username]
+              properties:
+                email:
+                  type: string
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+        '409':
+          description: User already exists
+
+  /logout:
+    post:
+      summary: Logout User
+      tags: [Auth]
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /profile:
+    post:
+      summary: Get User Profile
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Profile Data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                  username:
+                    type: string
+                  role:
+                    type: string
+
+  /profile/update:
+    post:
+      summary: Update User Profile
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+
+  /profile/change-password:
+    post:
+      summary: Change Password
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, current_password, new_password]
+              properties:
+                email:
+                  type: string
+                current_password:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          description: Password changed successfully
+
+  # --- ADMIN ROUTES ---
+  /parking-lots:
+    get:
+      summary: List all parking lots (Admin)
+      tags: [Admin]
+      responses:
+        '200':
+          description: List of lots with spots info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingLot'
+
+  /parking-lot:
+    post:
+      summary: Create Parking Lot
+      tags: [Admin]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                pin_code:
+                  type: string
+                capacity:
+                  type: integer
+                price_per_hour:
+                  type: number
+      responses:
+        '201':
+          description: Created
+
+  /parking-lot/{id}:
+    put:
+      summary: Update Parking Lot
+      tags: [Admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                pin_code:
+                  type: string
+                capacity:
+                  type: integer
+                price_per_hour:
+                  type: number
+      responses:
+        '200':
+          description: Updated successfully
+        '403':
+          description: Cannot edit archive
+
+    delete:
+      summary: Delete Parking Lot (Archive)
+      tags: [Admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted (Archived)
+        '400':
+          description: Lot has active reservations
+
+  /parking-lot/{lot_id}/spots:
+    get:
+      summary: Get all spots for a lot
+      tags: [Admin]
+      parameters:
+        - in: path
+          name: lot_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of spots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    spot_number:
+                      type: string
+                    is_occupied:
+                      type: boolean
+                    reservation:
+                      type: object
+
+  /parking-spot/{spot_id}/release:
+    post:
+      summary: Force release a spot (Admin)
+      tags: [Admin]
+      parameters:
+        - in: path
+          name: spot_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spot released
+
+  /users:
+    get:
+      summary: List all users
+      tags: [Admin]
+      responses:
+        '200':
+          description: User list
+
+  /users/{user_id}:
+    get:
+      summary: Get User Details and History
+      tags: [Admin]
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User details with reservation history
+
+  /analytics:
+    get:
+      summary: Global Admin Analytics
+      tags: [Admin]
+      description: Returns occupancy, revenue, and lot summaries (Cached).
+      responses:
+        '200':
+          description: Analytics data
+
+  /parking-lot/{lot_id}/analytics:
+    get:
+      summary: Specific Lot Analytics (Admin)
+      tags: [Admin]
+      parameters:
+        - in: path
+          name: lot_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detailed lot analytics (revenue, occupancy, timeseries)
+
+  # --- USER ROUTES ---
+  /available-lots:
+    get:
+      summary: Get Available Lots (User View)
+      tags: [User]
+      responses:
+        '200':
+          description: List of lots with availability
+
+  /reserve:
+    post:
+      summary: Reserve Spot(s)
+      tags: [User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lot_id, user_email]
+              properties:
+                lot_id:
+                  type: integer
+                user_email:
+                  type: string
+                quantity:
+                  type: integer
+                  default: 1
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  reservations:
+                    type: array
+
+  /my-reservations:
+    post:
+      summary: Get My Booking History
+      tags: [User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: List of reservations
+
+  /release-spot:
+    post:
+      summary: Release My Spot (User)
+      tags: [User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reservation_id]
+              properties:
+                reservation_id:
+                  type: integer
+      responses:
+        '200':
+          description: Spot released, cost returned
+
+  /export-csv:
+    post:
+      summary: Trigger CSV Export
+      tags: [User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Async task started
+
+  /user-summary:
+    post:
+      summary: Get User Analytics Summary
+      tags: [User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: User spending summary and timeseries
+
+  /parking-lot/{lot_id}/analytics:
+    post:
+      summary: Get User Analytics for Specific Lot
+      tags: [User]
+      parameters:
+        - in: path
+          name: lot_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: User specific lot analytics
