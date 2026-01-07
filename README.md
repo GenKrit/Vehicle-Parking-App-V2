@@ -90,7 +90,7 @@ Ensure the following are installed before running the project:
 
 ## ⚙️ Installation
 
-#Backend Setup (Flask)
+### Backend Setup (Flask)
 Navigate to the backend directory and create a virtual environment:
 
 ```text
