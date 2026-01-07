@@ -98,20 +98,20 @@ python -m venv venv
 ```
 
 Activate the virtual environment:
-#Windows
+### Windows
 ```text
 venv\Scripts\activate
 ```
-#macOS / Linux
+### macOS / Linux
 ```text
 source venv/bin/activate
 ```
-#Install backend dependencies:
+### Install backend dependencies:
 ```text
 pip install -r requirements.txt
 ```
 
-#Frontend Setup (Vue.js)
+## Frontend Setup (Vue.js)
 Navigate to the frontend directory and install dependencies:
 ```text
 npm install
@@ -122,42 +122,42 @@ npm install
 ## ▶️ Running the Application (Local)
 The application requires multiple services to be running simultaneously.
 
-#Terminal 1: Redis & MailHog
+### Terminal 1: Redis & MailHog
 - Ensure Redis service is running
 - Start MailHog
 
-#MailHog Web Interface:
+### MailHog Web Interface:
 http://localhost:8025
 
-#Terminal 2: Flask API
+### Terminal 2: Flask API
 
 ```text
 cd backend
 python app.py
 ```
 
-#Notes
+### Notes:
 - Database is created automatically on first run
 - A default admin account is created
 
-#Admin Credentials
+### Admin Credentials
 - Email: admin@parking.com
 - Password: admin123
 
 
-# Terminal 3: Celery Worker
+### Terminal 3: Celery Worker
 ```text
 cd backend
 celery -A app.celery worker --pool=solo --loglevel=info
 ```
 
-#Terminal 4: Celery Beat (Scheduler)
+### Terminal 4: Celery Beat (Scheduler)
 ```text
 cd backend
 celery -A app.celery beat --loglevel=info
 ```
 
-#Terminal 5: Frontend
+### Terminal 5: Frontend
 ```text
 cd frontend
 npm run dev
@@ -175,7 +175,7 @@ npm run dev
 
 ------
 
-##🧹 Redis Cache Management
+## 🧹 Redis Cache Management
 To clear the Redis cache manually:
 
 ```text
@@ -184,7 +184,7 @@ redis-cli FLUSHALL
 
 -----
 
-##📝 Notes
+## 📝 Notes
 
 - MailHog is used only for local development
 - Production deployments should use an SMTP service instead of MailHog
@@ -193,7 +193,7 @@ redis-cli FLUSHALL
 
 ------
 
-##🚀 Deployment Overview
+## 🚀 Deployment Overview
 
 - Frontend: Vercel
 - Backend: Render
@@ -203,7 +203,7 @@ Free-tier deployments may experience cold starts.
 
 ------
 
-##📄 License
+## 📄 License
 This project is intended for academic and learning purposes.
 
 
